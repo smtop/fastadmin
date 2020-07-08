@@ -229,27 +229,28 @@ class Install extends Command
             rename($adminFile, ROOT_PATH . 'public' . DS . $adminName);
         }
 
-        //修改站点名称
+        // 修改站点名称
         if ($siteName != __('My Website')) {
             $instance->name('config')->where('name', 'name')->update(['value' => $siteName]);
-            $configFile = APP_PATH . 'extra' . DS . 'site.php';
-            $config = include $configFile;
-            $configList = $instance->name("config")->select();
-            foreach ($configList as $k => $value) {
-                if (in_array($value['type'], ['selects', 'checkbox', 'images', 'files'])) {
-                    $value['value'] = explode(',', $value['value']);
-                }
-                if ($value['type'] == 'array') {
-                    $value['value'] = (array)json_decode($value['value'], true);
-                }
-                $config[$value['name']] = $value['value'];
-            }
-            $config['name'] = $siteName;
-            file_put_contents($configFile, '<?php' . "\n\nreturn " . var_export($config, true) . ";");
         }
 
+        // 生成站点配置文件
+        $configFile = APP_PATH . 'extra' . DS . 'site.php';
+        $config = [];
+        $configList = $instance->name("config")->order('id', 'ASC')->select();
+        foreach ($configList as $k => $value) {
+            if (in_array($value['type'], ['selects', 'checkbox', 'images', 'files'])) {
+                $value['value'] = explode(',', $value['value']);
+            }
+            if ($value['type'] == 'array') {
+                $value['value'] = (array)json_decode($value['value'], true);
+            }
+            $config[$value['name']] = $value['value'];
+        }
+        file_put_contents($configFile, '<?php' . "\n\nreturn " . var_export($config, true) . ";");
+
         $installLockFile = INSTALL_PATH . "install.lock";
-        //检测能否成功写入lock文件
+        // 检测能否成功写入lock文件
         $result = @file_put_contents($installLockFile, 1);
         if (!$result) {
             throw new Exception(__('The current permissions are insufficient to write the file %s', 'application/admin/command/Install/install.lock'));
